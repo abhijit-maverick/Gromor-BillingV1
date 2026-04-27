@@ -1,0 +1,2325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GR Billing Engine</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --panel: #ffffff;
+    --border: #e5e7eb;
+    --border-soft: #f1f3f5;
+    --ink: #0f172a;
+    --ink-soft: #334155;
+    --muted: #64748b;
+    --muted-soft: #94a3b8;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-soft: #eef2ff;
+    --success: #059669;
+    --success-soft: #d1fae5;
+    --danger: #dc2626;
+    --danger-soft: #fee2e2;
+    --warn: #d97706;
+    --warn-soft: #fef3c7;
+    --row-alt: #f9fafb;
+    --emi: #fef9c3;
+    --tail: #e0f2fe;
+    --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+    --shadow-md: 0 1px 3px rgba(15,23,42,0.05), 0 4px 12px rgba(15,23,42,0.04);
+    --shadow-lg: 0 4px 6px rgba(15,23,42,0.05), 0 10px 24px rgba(15,23,42,0.06);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  header {
+    background: linear-gradient(135deg, #312e81 0%, #4f46e5 50%, #6366f1 100%);
+    color: white;
+    padding: 28px 36px;
+    box-shadow: 0 4px 16px rgba(79,70,229,0.15);
+    position: relative;
+    overflow: hidden;
+  }
+  header::after {
+    content: "";
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  header h1 {
+    margin: 0 0 6px 0; font-size: 24px; font-weight: 700;
+    letter-spacing: -0.4px; position: relative;
+  }
+  header .sub { font-size: 13px; opacity: 0.85; font-weight: 400; position: relative; }
+  main { max-width: 1320px; margin: 0 auto; padding: 28px 28px 72px; }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 12px 20px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 0.18s ease;
+    white-space: nowrap;
+    margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--ink); background: var(--row-alt); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab:disabled { color: #c0c4cc; cursor: not-allowed; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease;
+  }
+  .panel:hover { box-shadow: var(--shadow-md); }
+  .panel h2 {
+    margin: 0 0 14px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .panel h3 {
+    margin: 16px 0 8px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .smart-upload {
+    margin-bottom: 16px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--accent-soft) 0%, #ffffff 100%);
+    transition: all 0.2s ease;
+  }
+  .smart-upload:hover { border-color: var(--accent); }
+  .smart-upload-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    flex-wrap: wrap;
+  }
+  .smart-upload-icon {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700;
+    box-shadow: 0 2px 8px rgba(79,70,229,0.3);
+  }
+  .smart-upload-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .smart-upload-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .smart-upload input[type=file] { display: none; }
+  .smart-upload-btn {
+    margin-left: auto;
+    background: var(--accent);
+    color: white;
+    padding: 9px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(79,70,229,0.3);
+  }
+  .smart-upload-btn:hover { background: var(--accent-hover); }
+  .smart-upload-result {
+    border-top: 1px solid var(--border-soft);
+    padding: 14px 22px;
+    background: white;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .smart-row {
+    display: grid;
+    grid-template-columns: 1fr 160px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 12.5px;
+  }
+  .smart-row .filename { font-weight: 500; color: var(--ink); }
+  .smart-row .arrow { color: var(--muted-soft); }
+  .smart-row select { padding: 4px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; }
+  .smart-row .conf {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .smart-row .conf.high { background: var(--success-soft); color: var(--success); }
+  .smart-row .conf.med { background: var(--warn-soft); color: #92400e; }
+  .smart-row .conf.low { background: var(--danger-soft); color: var(--danger); }
+  .file-grid-divider {
+    text-align: center;
+    margin: 14px 0;
+    color: var(--muted-soft);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+  }
+  .file-grid-divider::before, .file-grid-divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 35%;
+    height: 1px;
+    background: var(--border-soft);
+  }
+  .file-grid-divider::before { left: 0; }
+  .file-grid-divider::after { right: 0; }
+  .file-grid-divider span { background: white; padding: 0 12px; position: relative; z-index: 1; }
+
+  .file-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .file-row {
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    background: var(--row-alt);
+  }
+  .file-row.ok { border-style: solid; border-color: var(--success); background: #f0fdf4; }
+  .file-row.required label::after { content: " *"; color: var(--danger); }
+  .file-row label {
+    font-weight: 600;
+    font-size: 13px;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .file-row .hint { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .file-row input[type=file] { font-size: 13px; }
+  .file-row .filename { font-size: 12px; color: var(--success); margin-top: 6px; }
+
+  details.mapping {
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: white;
+  }
+  details.mapping > summary {
+    cursor: pointer;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    user-select: none;
+  }
+  details.mapping > summary:hover { color: var(--ink); }
+  .mapping-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+    padding: 8px 10px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .mapping-grid label { font-size: 12px; color: var(--muted); align-self: center; }
+  .mapping-grid select { font-size: 12px; padding: 3px 6px; }
+
+  button.primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    box-shadow: 0 1px 2px rgba(79,70,229,0.3);
+  }
+  button.primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(79,70,229,0.35); }
+  button.primary:active { transform: translateY(0); }
+  button.primary:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; transform: none; }
+  button.secondary {
+    background: white;
+    color: var(--ink);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  button.secondary:hover { background: var(--row-alt); border-color: var(--muted-soft); }
+
+  .actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; }
+  .status { font-size: 13px; color: var(--muted); }
+  .status.ok { color: var(--success); }
+  .status.err { color: var(--danger); }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 18px;
+  }
+  .month-card {
+    background: var(--panel);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .month-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+    border-color: var(--border);
+  }
+  .month-card.partial {
+    background: linear-gradient(180deg, #fffbeb 0%, var(--panel) 30%);
+    border-color: #fcd34d;
+  }
+  .month-card h3 {
+    margin: 0 0 14px 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    letter-spacing: -0.2px;
+  }
+  .partial-badge {
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--warn-soft);
+    color: #92400e;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .kv { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; align-items: center; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--ink-soft); }
+  .kv.fee {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-soft);
+    font-size: 14px;
+  }
+  .kv.fee .k { font-weight: 600; color: var(--ink); }
+  .kv.fee .v { font-weight: 700; padding: 5px 11px; border-radius: var(--radius-sm); }
+  .kv.fee .v.pos { background: var(--success-soft); color: var(--success); }
+  .kv.fee .v.neg { background: var(--danger-soft); color: var(--danger); }
+  .kv.memo { font-size: 12.5px; }
+  .kv.memo .k { color: var(--muted-soft); font-style: italic; }
+  .kv.memo .v { color: var(--muted); }
+
+  /* Stat row at top of summary tab */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+  }
+  .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .stat-card .label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .stat-card .value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
+  }
+  .stat-card .sub {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .stat-card.accent .value { color: var(--accent); }
+  .stat-card.success .value { color: var(--success); }
+  .stat-card.warn .value { color: var(--warn); }
+
+  .chart-wrap {
+    position: relative;
+    height: 280px;
+    margin-top: 8px;
+  }
+
+  .daily-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .daily-controls select { padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: 4px; }
+
+  table.daily {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  table.daily th, table.daily td {
+    text-align: right;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  table.daily th { background: var(--row-alt); font-weight: 600; color: var(--muted); position: sticky; top: 0; }
+  table.daily td:first-child, table.daily th:first-child { text-align: left; }
+  table.daily td:last-child, table.daily th:last-child { text-align: center; }
+  table.daily tr.emi { background: var(--emi); }
+  table.daily tr.tail { background: var(--tail); }
+  .pill { display: inline-block; padding: 1px 8px; font-size: 11px; font-weight: 600; border-radius: 10px; }
+  .pill.emi { background: #fde68a; color: #92400e; }
+  .pill.tail { background: #bfdbfe; color: #1e40af; }
+  .pill.none { background: #e5e7eb; color: #4b5563; }
+  .pill.ontime { background: #dcfce7; color: #166534; }
+  .pill.early { background: #cffafe; color: #155e75; }
+  .pill.late { background: #fee2e2; color: #991b1b; }
+  .pill.unsettled { background: #fef3c7; color: #92400e; }
+  .pill.pending { background: #f3f4f6; color: #6b7280; }
+  .pill.dpd-low { background: #fef3c7; color: #92400e; }
+  .pill.dpd-mid { background: #fed7aa; color: #9a3412; }
+  .pill.dpd-high { background: #fecaca; color: #991b1b; }
+  .pill.dpd-crit { background: #dc2626; color: white; }
+
+  /* Loan Lookup styles */
+  .lookup-controls { display: flex; gap: 10px; align-items: center; }
+  .lookup-controls input {
+    flex: 0 0 240px;
+    padding: 8px 12px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .lookup-controls input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .loan-header {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px 22px;
+    padding: 14px 0;
+  }
+  .loan-header .kv { display: block; padding: 0; }
+  .loan-header .kv .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
+  .loan-header .kv .v { font-size: 15px; font-weight: 600; }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .cal-month {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    background: white;
+  }
+  .cal-month h4 { margin: 0 0 8px 0; font-size: 13px; font-weight: 600; }
+  .cal-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    font-size: 11px;
+  }
+  .cal-dow { text-align: center; color: var(--muted); font-weight: 600; padding: 2px 0; font-size: 10px; }
+  .cal-day {
+    text-align: center;
+    padding: 4px 0;
+    border-radius: 3px;
+    font-variant-numeric: tabular-nums;
+    background: #f9fafb;
+    color: var(--ink);
+  }
+  .cal-day.empty { background: transparent; }
+  .cal-day.ontime { background: #16a34a; color: white; font-weight: 600; }
+  .cal-day.early { background: #06b6d4; color: white; font-weight: 600; }
+  .cal-day.late { background: #dc2626; color: white; font-weight: 600; }
+  .cal-day.unsettled { background: #f59e0b; color: white; font-weight: 600; }
+  .cal-day.pending { background: #e5e7eb; color: var(--muted); font-weight: 600; }
+  .cal-legend { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .cal-legend .pill { margin-right: 4px; }
+
+  .schedule-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .schedule-table th, .schedule-table td {
+    padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  .schedule-table th { background: var(--row-alt); font-weight: 600; color: var(--muted); position: sticky; top: 0; }
+  .schedule-table td:first-child, .schedule-table th:first-child { text-align: left; }
+  .schedule-table td:last-child, .schedule-table th:last-child { text-align: center; }
+
+  .scroll-x { overflow-x: auto; }
+  .scroll-y { max-height: 70vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; }
+
+  .hidden { display: none !important; }
+
+  .err-banner {
+    background: #fef2f2;
+    color: var(--danger);
+    border: 1px solid #fecaca;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    font-size: 13px;
+  }
+  .info-banner {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    font-size: 13px;
+  }
+  .totals-row { font-weight: 700; background: #f9fafb; }
+</style>
+</head>
+<body>
+<header>
+  <h1>GR Billing Engine</h1>
+  <div class="sub">SR × GR Finance — Monthly Service Fee Calculator (MSA Schedule III)</div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab active" data-tab="upload">1. Upload &amp; Run</button>
+    <button class="tab" data-tab="summary" disabled>2. Monthly Summary</button>
+    <button class="tab" data-tab="daily" disabled>3. Daily Detail</button>
+    <button class="tab" data-tab="lookup" disabled>4. Loan Lookup</button>
+    <button class="tab" data-tab="dpd" disabled>5. DPD Watchlist</button>
+    <button class="tab" data-tab="export" disabled>6. Export</button>
+  </div>
+
+  <div id="errArea"></div>
+
+  <!-- ============ UPLOAD TAB ============ -->
+  <section id="tab-upload" class="tab-panel">
+    <div class="panel">
+      <h2>Input Files</h2>
+      <div class="smart-upload" id="smart-upload-zone">
+        <div class="smart-upload-inner">
+          <div class="smart-upload-icon">⬆</div>
+          <div>
+            <div class="smart-upload-title">Smart Upload</div>
+            <div class="smart-upload-sub">Drop or select all files at once — engine auto-detects which is which</div>
+          </div>
+          <input type="file" id="smart-files" accept=".xlsx,.xls,.csv" multiple>
+          <label for="smart-files" class="smart-upload-btn">Choose files</label>
+        </div>
+        <div id="smart-upload-result" class="smart-upload-result hidden"></div>
+      </div>
+      <div class="file-grid-divider"><span>or upload individually</span></div>
+      <div class="file-grid">
+        <div class="file-row required" id="row-loans">
+          <label for="f-loans">Loan Details (.xlsx / .csv)</label>
+          <div class="hint">One row per loan. Columns: Loan ID, Gross Amount Disbursed, Disbursement Date, EMI Start Date, Installment Amount, Rate of Interest, BPI Days.</div>
+          <input type="file" id="f-loans" accept=".xlsx,.xls,.csv">
+          <div class="filename" id="fn-loans"></div>
+          <details class="mapping hidden" id="map-loans">
+            <summary>Column mapping (auto-detected)</summary>
+            <div class="mapping-grid" id="mg-loans"></div>
+          </details>
+        </div>
+
+        <div class="file-row required" id="row-pay">
+          <label for="f-pay">Payments File (.xlsx / .csv)</label>
+          <div class="hint">Day-wise payments. Columns: Payment Date, Loan ID, Principal, Interest, Delayed Interest, Penalty.</div>
+          <input type="file" id="f-pay" accept=".xlsx,.xls,.csv">
+          <div class="filename" id="fn-pay"></div>
+          <details class="mapping hidden" id="map-pay">
+            <summary>Column mapping (auto-detected)</summary>
+            <div class="mapping-grid" id="mg-pay"></div>
+          </details>
+        </div>
+
+        <div class="file-row" id="row-fc">
+          <label for="f-fc">Foreclosure Charges (optional)</label>
+          <div class="hint">Two columns: Date, Amount (excl. GST). 50% included in service fee.</div>
+          <input type="file" id="f-fc" accept=".xlsx,.xls,.csv">
+          <div class="filename" id="fn-fc"></div>
+          <details class="mapping hidden" id="map-fc">
+            <summary>Column mapping (auto-detected)</summary>
+            <div class="mapping-grid" id="mg-fc"></div>
+          </details>
+        </div>
+
+        <div class="file-row" id="row-pf">
+          <label for="f-pf">Processing Fees (optional)</label>
+          <div class="hint">Two columns: Date, Amount (excl. GST). 75% included in service fee.</div>
+          <input type="file" id="f-pf" accept=".xlsx,.xls,.csv">
+          <div class="filename" id="fn-pf"></div>
+          <details class="mapping hidden" id="map-pf">
+            <summary>Column mapping (auto-detected)</summary>
+            <div class="mapping-grid" id="mg-pf"></div>
+          </details>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="btn-run" disabled>Run Calculation</button>
+        <span class="status" id="run-status">Upload Loan Details and Payments file to begin.</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Configuration</h2>
+      <div class="kv"><span class="k">Hurdle rate (X)</span><span class="v">19.75% p.a. simple, daily on closing POS</span></div>
+      <div class="kv"><span class="k">Penalty share (Z)</span><span class="v">50%</span></div>
+      <div class="kv"><span class="k">Processing fee share (P)</span><span class="v">75%</span></div>
+      <div class="kv"><span class="k">Foreclosure share (F)</span><span class="v">50%</span></div>
+      <div class="kv"><span class="k">GST divisor (/1.09)</span><span class="v">Not applied (per PRD §11)</span></div>
+    </div>
+  </section>
+
+  <!-- ============ SUMMARY TAB ============ -->
+  <section id="tab-summary" class="tab-panel hidden">
+    <div class="stats-row" id="summary-stats"></div>
+    <div class="panel">
+      <h2>Service Fee &amp; Receivable Trend</h2>
+      <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+    </div>
+    <div class="info-banner" id="summary-info"></div>
+    <div class="summary-grid" id="summary-cards"></div>
+  </section>
+
+  <!-- ============ DAILY TAB ============ -->
+  <section id="tab-daily" class="tab-panel hidden">
+    <div class="daily-controls">
+      <label for="day-month">Month:</label>
+      <select id="day-month"></select>
+      <span class="status" id="day-status"></span>
+    </div>
+    <div class="scroll-y">
+      <div class="scroll-x">
+        <table class="daily" id="daily-table"></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LOAN LOOKUP TAB ============ -->
+  <section id="tab-lookup" class="tab-panel hidden">
+    <div class="panel">
+      <h2>Loan Lookup</h2>
+      <div class="lookup-controls">
+        <input type="text" id="lookup-input" placeholder="Enter Loan ID (e.g. 231653)" autocomplete="off">
+        <button class="primary" id="lookup-btn">Search</button>
+        <span class="status" id="lookup-status"></span>
+      </div>
+    </div>
+    <div id="lookup-result"></div>
+  </section>
+
+  <!-- ============ DPD WATCHLIST TAB ============ -->
+  <section id="tab-dpd" class="tab-panel hidden">
+    <div class="info-banner" id="dpd-info"></div>
+    <div class="stats-row" id="dpd-bucket-cards"></div>
+    <div class="panel">
+      <h2>DPD Distribution</h2>
+      <div class="chart-wrap" style="height:240px"><canvas id="dpd-chart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Loans in DPD (FIFO cumulative shortfall)</h2>
+      <div class="scroll-y">
+        <div class="scroll-x">
+          <table class="daily" id="dpd-table"></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EXPORT TAB ============ -->
+  <section id="tab-export" class="tab-panel hidden">
+    <div class="panel">
+      <h2>Excel Report</h2>
+      <p>Download a multi-sheet workbook containing the monthly summary plus one daily detail sheet per month.</p>
+      <button class="primary" id="btn-export">Download Excel Report</button>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ============================================================
+   GROMOR BILLING ENGINE — vanilla JS
+   ============================================================ */
+"use strict";
+
+const HURDLE_RATE     = 0.1975;
+const PROCESSING_PCT  = 0.75;
+const FORECLOSURE_PCT = 0.50;
+const PENALTY_PCT     = 0.50;
+
+/* ---------- utilities ---------- */
+const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
+const toNum  = v => {
+  if (v === null || v === undefined || v === "") return 0;
+  if (typeof v === "number") return v;
+  const s = String(v).replace(/[₹,\s]/g, "").trim();
+  if (s === "" || s === "-") return 0;
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+};
+const fmtINR = n => {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  return sign + "₹" + abs.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+const fmtINR0 = n => {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  return sign + "₹" + abs.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+};
+
+/* ---------- date parsing (DD/MM first, no UTC drift) ---------- */
+const MONTH_MAP = {
+  jan:0, feb:1, mar:2, apr:3, may:4, jun:5,
+  jul:6, aug:7, sep:8, sept:8, oct:9, nov:10, dec:11
+};
+function makeUTC(y, m, d) { return new Date(Date.UTC(y, m, d)); }
+function parseDate(val) {
+  if (val === null || val === undefined || val === "") return null;
+  // Native Date object (from SheetJS cellDates:true). Use UTC accessors to avoid drift.
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return null;
+    return makeUTC(val.getUTCFullYear(), val.getUTCMonth(), val.getUTCDate());
+  }
+  // Excel serial number (defensive — shouldn't occur with cellDates:true, but handle anyway)
+  if (typeof val === "number" && isFinite(val)) {
+    // Excel serial: 1 = 1900-01-01 (with 1900 leap-year bug). Standard offset = 25569 days.
+    const ms = (val - 25569) * 86400 * 1000;
+    const d = new Date(ms);
+    return makeUTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  let s = String(val).trim();
+  if (!s) return null;
+
+  // ISO YYYY-MM-DD or YYYY/MM/DD
+  let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (m) return makeUTC(+m[1], +m[2] - 1, +m[3]);
+
+  // DD-Mon-YYYY (e.g. 12-Aug-2025)  or DD Mon YYYY
+  m = s.match(/^(\d{1,2})[-\s\/]([A-Za-z]{3,4})[-\s\/](\d{2,4})/);
+  if (m) {
+    const mo = MONTH_MAP[m[2].toLowerCase()];
+    if (mo !== undefined) {
+      let y = +m[3]; if (y < 100) y += 2000;
+      return makeUTC(y, mo, +m[1]);
+    }
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY (and 2-digit year variants)
+  m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+  if (m) {
+    let y = +m[3]; if (y < 100) y += 2000;
+    return makeUTC(y, +m[2] - 1, +m[1]);
+  }
+
+  // Fallback: native Date
+  const fb = new Date(s);
+  if (!isNaN(fb.getTime())) {
+    return makeUTC(fb.getFullYear(), fb.getMonth(), fb.getDate());
+  }
+  return null;
+}
+function dateKey(d) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+function monthKey(d) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+function monthLabel(mk) {
+  const [y, m] = mk.split("-").map(Number);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${months[m-1]} ${y}`;
+}
+function addDays(d, n) {
+  return new Date(d.getTime() + n * 86400 * 1000);
+}
+function endOfMonth(d) {
+  return makeUTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0);
+}
+function daysBetween(a, b) {
+  return Math.round((b.getTime() - a.getTime()) / (86400 * 1000));
+}
+
+/* ---------- column auto-detection ---------- */
+function autoDetectLoans(headers) {
+  // Returns map of {field -> headerName}
+  const norm = h => String(h).toLowerCase().trim();
+  const find = (preds) => {
+    for (const h of headers) {
+      const n = norm(h);
+      for (const p of preds) if (p(n)) return h;
+    }
+    return "";
+  };
+  return {
+    loanId:        find([n => n === "loan id" || n === "loan_id" || (n.includes("loan") && n.includes("id"))]),
+    grossAmount:   find([n => n.includes("gross amount") || n.includes("disbursed amount") || n.includes("loan amount")]),
+    disbDate:      find([n => n.includes("disbursement date") || n === "disbursement"]),
+    emiStartDate:  find([n => n.includes("emi start") || n.includes("first emi") || n.includes("repayment start")]),
+    installment:   find([n => n.includes("installment") || n.includes("emi amount") || n === "emi"]),
+    rate:          find([n => n.includes("rate of interest") || n === "roi" || n.includes("interest rate")]),
+    bpi:           find([n => n.includes("bpi")]),
+    closureDate:   find([n => n.includes("closure date") || n.includes("closed date") || n === "loan closure date"])
+  };
+}
+function autoDetectPayments(headers) {
+  const norm = h => String(h).toLowerCase().trim();
+  const findFirst = (...preds) => {
+    for (const h of headers) {
+      const n = norm(h);
+      for (const p of preds) if (p(n)) return h;
+    }
+    return "";
+  };
+  return {
+    payDate:       findFirst(n => n.includes("payment date") || n === "date" || n.includes("txn date") || n.includes("transaction date")),
+    loanId:        findFirst(n => n === "loan id" || n === "loan_id" || (n.includes("loan") && n.includes("id"))),
+    principal:     findFirst(n => n.includes("principal received") || n.includes("principal recd") || n === "principal"),
+    interest:      findFirst(n => n.includes("interest received") && !n.includes("delayed"), n => n === "interest" && true),
+    delayedInt:    findFirst(n => n.includes("delayed interest") || n.includes("delayed int")),
+    penalty:       findFirst(n => n.includes("penalty received") || n.includes("penalty"))
+  };
+}
+function autoDetectTwoCol(headers) {
+  const norm = h => String(h).toLowerCase().trim();
+  let dateCol = "", amtCol = "";
+  for (const h of headers) {
+    const n = norm(h);
+    if (!dateCol && n.includes("date")) dateCol = h;
+    if (!amtCol && (n.includes("amount") || n.includes("amt") || n.includes("fee") || n.includes("charge"))) amtCol = h;
+  }
+  // fallback: first/second column
+  if (!dateCol && headers.length > 0) dateCol = headers[0];
+  if (!amtCol && headers.length > 1) amtCol = headers[1];
+  return { dateCol, amtCol };
+}
+
+/* ---------- file reading ---------- */
+function readWorkbook(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        // Date handling: cellDates:false returns Excel serial numbers (integers), which
+        // are timezone-independent. parseDate() converts these to UTC-midnight Date objects.
+        // We deliberately avoid cellDates:true: in non-UTC browsers (e.g. IST), SheetJS's
+        // internal date constructor uses local-time semantics, producing dates that drift
+        // by the timezone offset (a Jul 1 entry comes back as Jun 30 18:29:50 UTC in IST).
+        // We also avoid raw:false, which would format dates back into locale-specific
+        // strings (e.g. "M/D/YY") that defeat the DD/MM-first parser.
+        const wb = XLSX.read(e.target.result, { type: "array", cellDates: false });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        const headers = rows.length ? Object.keys(rows[0]) : [];
+        // Try to recover headers if rows are empty
+        if (!rows.length) {
+          const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+          const hdrs = [];
+          for (let c = range.s.c; c <= range.e.c; c++) {
+            const cell = sheet[XLSX.utils.encode_cell({ r: range.s.r, c })];
+            hdrs.push(cell ? String(cell.v) : "");
+          }
+          resolve({ rows: [], headers: hdrs });
+        } else {
+          resolve({ rows, headers });
+        }
+      } catch (err) { reject(err); }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/* ---------- application state ---------- */
+const STATE = {
+  loans: { rows: [], headers: [], mapping: null, file: null },
+  pay:   { rows: [], headers: [], mapping: null, file: null },
+  fc:    { rows: [], headers: [], mapping: null, file: null },
+  pf:    { rows: [], headers: [], mapping: null, file: null },
+  result: null
+};
+
+/* ---------- mapping UI ---------- */
+function renderMapping(slotId, fieldList, headers, currentMapping, onChange) {
+  const root = document.getElementById(slotId);
+  root.innerHTML = "";
+  for (const [field, label] of fieldList) {
+    const lbl = document.createElement("label");
+    lbl.textContent = label;
+    const sel = document.createElement("select");
+    const blank = document.createElement("option");
+    blank.value = ""; blank.textContent = "— none —";
+    sel.appendChild(blank);
+    for (const h of headers) {
+      const opt = document.createElement("option");
+      opt.value = h; opt.textContent = h;
+      if (currentMapping[field] === h) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener("change", () => { currentMapping[field] = sel.value; onChange(); });
+    root.appendChild(lbl);
+    root.appendChild(sel);
+  }
+}
+
+/* ---------- file upload handlers ---------- */
+async function onFile(slot, file, opts) {
+  const row = document.getElementById(opts.rowId);
+  const fnEl = document.getElementById(opts.fnId);
+  const mapEl = document.getElementById(opts.mapId);
+  try {
+    const { rows, headers } = await readWorkbook(file);
+    STATE[slot].rows = rows;
+    STATE[slot].headers = headers;
+    STATE[slot].file = file;
+    STATE[slot].mapping = opts.detect(headers);
+    fnEl.textContent = `${file.name} — ${rows.length.toLocaleString()} rows, ${headers.length} columns`;
+    row.classList.add("ok");
+    mapEl.classList.remove("hidden");
+    renderMapping(opts.mgId, opts.fields, headers, STATE[slot].mapping, refreshRunButton);
+    refreshRunButton();
+  } catch (err) {
+    row.classList.remove("ok");
+    fnEl.textContent = "";
+    showError(`Failed to read ${file.name}: ${err.message}`);
+  }
+}
+
+/* ---------- smart upload: classify each file into a slot ---------- */
+function scoreFileForSlot(headers) {
+  /* Returns { loans, pay, fc, pf } scores in [0..1] */
+  const norm = h => String(h).toLowerCase().trim();
+  const hs = headers.map(norm);
+  const has = (...needles) => needles.some(n => hs.some(h => h.includes(n)));
+  const hasAll = (...needles) => needles.every(n => hs.some(h => h.includes(n)));
+
+  // Loans file: needs loan id + disbursement + EMI start + installment + rate
+  let loanScore = 0;
+  if (has("loan id", "loan_id")) loanScore += 0.25;
+  if (has("disbursement date", "disbursement")) loanScore += 0.25;
+  if (has("emi start", "first emi", "repayment start")) loanScore += 0.2;
+  if (has("installment", "emi amount") || hs.includes("emi")) loanScore += 0.15;
+  if (has("rate of interest", "interest rate") || hs.includes("roi")) loanScore += 0.15;
+
+  // Payments file: needs payment date + loan id + principal + interest
+  let payScore = 0;
+  if (has("payment date", "txn date", "transaction date") || hs.includes("date")) payScore += 0.2;
+  if (has("loan id", "loan_id")) payScore += 0.2;
+  if (has("principal received", "principal recd") || hs.includes("principal")) payScore += 0.2;
+  if (has("interest received", "interest recd")) payScore += 0.25;
+  if (has("delayed interest")) payScore += 0.075;
+  if (has("penalty")) payScore += 0.075;
+
+  // Foreclosure / Processing: 2-3 columns with date + amount, no loan-level fields
+  // Distinguish by header keywords if present
+  const isSmallTwoCol = headers.length <= 4 && has("date") && (has("amount", "amt", "fee", "charge"));
+  let fcScore = 0, pfScore = 0;
+  if (isSmallTwoCol) {
+    if (has("foreclosure", "fore-closure", "preclosure")) fcScore = 0.9;
+    else if (has("processing", "pf", "proc fee")) pfScore = 0.9;
+    else {
+      // Ambiguous 2-col: assign equal medium confidence to both (user picks)
+      fcScore = 0.4; pfScore = 0.4;
+    }
+  }
+  // Negative signals: if file has loan-level fields, definitely not fc/pf
+  if (loanScore > 0.3 || payScore > 0.3) { fcScore = 0; pfScore = 0; }
+
+  return { loans: loanScore, pay: payScore, fc: fcScore, pf: pfScore };
+}
+
+const SMART_SLOTS = [
+  { id: "loans", label: "Loan Details" },
+  { id: "pay",   label: "Payments" },
+  { id: "fc",    label: "Foreclosure Charges" },
+  { id: "pf",    label: "Processing Fees" }
+];
+const SMART_OPTS_BY_SLOT = {
+  loans: {
+    rowId: "row-loans", fnId: "fn-loans", mapId: "map-loans", mgId: "mg-loans",
+    detect: autoDetectLoans,
+    fields: [
+      ["loanId", "Loan ID"], ["grossAmount", "Gross Amount Disbursed"],
+      ["disbDate", "Disbursement Date"], ["emiStartDate", "EMI Start Date"],
+      ["installment", "Installment Amount"], ["rate", "Rate of Interest"],
+      ["bpi", "BPI Days"], ["closureDate", "Loan Closure Date"]
+    ]
+  },
+  pay: {
+    rowId: "row-pay", fnId: "fn-pay", mapId: "map-pay", mgId: "mg-pay",
+    detect: autoDetectPayments,
+    fields: [
+      ["payDate", "Payment Date"], ["loanId", "Loan ID"],
+      ["principal", "Principal Received"], ["interest", "Interest Received"],
+      ["delayedInt", "Delayed Interest"], ["penalty", "Penalty Received"]
+    ]
+  },
+  fc: {
+    rowId: "row-fc", fnId: "fn-fc", mapId: "map-fc", mgId: "mg-fc",
+    detect: autoDetectTwoCol,
+    fields: [["dateCol", "Date"], ["amtCol", "Amount"]]
+  },
+  pf: {
+    rowId: "row-pf", fnId: "fn-pf", mapId: "map-pf", mgId: "mg-pf",
+    detect: autoDetectTwoCol,
+    fields: [["dateCol", "Date"], ["amtCol", "Amount"]]
+  }
+};
+
+document.getElementById("smart-files").addEventListener("change", async e => {
+  const files = [...e.target.files];
+  if (!files.length) return;
+  const result = document.getElementById("smart-upload-result");
+  result.classList.remove("hidden");
+  result.innerHTML = `<div style="color:var(--muted);font-size:13px">Scanning ${files.length} files...</div>`;
+
+  // For each file, peek at headers
+  const peeks = [];
+  for (const f of files) {
+    try {
+      const { headers } = await readWorkbook(f);
+      const scores = scoreFileForSlot(headers);
+      peeks.push({ file: f, headers, scores });
+    } catch (err) {
+      peeks.push({ file: f, error: err.message });
+    }
+  }
+
+  // Hungarian-style greedy assignment: highest-scoring (file, slot) pair claimed first
+  const assignments = {}; // slot -> file index
+  const taken = new Set();
+  const candidates = [];
+  for (let i = 0; i < peeks.length; i++) {
+    if (peeks[i].error) continue;
+    for (const slot of ["loans", "pay", "fc", "pf"]) {
+      candidates.push({ idx: i, slot, score: peeks[i].scores[slot] });
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  for (const c of candidates) {
+    if (assignments[c.slot] !== undefined) continue;
+    if (taken.has(c.idx)) continue;
+    if (c.score < 0.3) continue; // refuse low-confidence assignments
+    assignments[c.slot] = c.idx;
+    taken.add(c.idx);
+  }
+
+  // Render the routing table
+  let html = `<div style="font-weight:600;font-size:13px;margin-bottom:10px;color:var(--ink)">Detected file routing — review &amp; confirm</div>`;
+  for (const slot of SMART_SLOTS) {
+    const fi = assignments[slot.id];
+    const peek = fi !== undefined ? peeks[fi] : null;
+    const conf = peek ? peek.scores[slot.id] : 0;
+    const confCls = conf >= 0.7 ? "high" : (conf >= 0.4 ? "med" : "low");
+    const confTxt = conf > 0 ? Math.round(conf * 100) + "%" : "—";
+
+    // Build options dropdown
+    let opts = `<option value="">— skip —</option>`;
+    for (let i = 0; i < peeks.length; i++) {
+      if (peeks[i].error) continue;
+      const sel = i === fi ? "selected" : "";
+      opts += `<option value="${i}" ${sel}>${peeks[i].file.name}</option>`;
+    }
+    html += `<div class="smart-row">
+      <div><strong>${slot.label}</strong></div>
+      <select data-slot="${slot.id}">${opts}</select>
+      <div class="filename">${peek ? peek.file.name : '<span style="color:var(--muted-soft)">(none assigned)</span>'}</div>
+      <div class="conf ${confCls}">${confTxt}</div>
+    </div>`;
+  }
+  html += `<div style="margin-top:14px;display:flex;gap:10px"><button class="primary" id="smart-confirm">Confirm &amp; Load</button>
+    <button class="secondary" id="smart-reset">Reset</button></div>`;
+  result.innerHTML = html;
+
+  // Wire up confirm
+  document.getElementById("smart-confirm").addEventListener("click", async () => {
+    const selects = result.querySelectorAll("select[data-slot]");
+    const finalAssignments = {};
+    for (const s of selects) {
+      const slot = s.dataset.slot;
+      const idx = s.value === "" ? null : parseInt(s.value);
+      if (idx !== null) finalAssignments[slot] = idx;
+    }
+    // Apply each assignment via existing onFile logic
+    for (const slot of Object.keys(finalAssignments)) {
+      const peek = peeks[finalAssignments[slot]];
+      await onFile(slot, peek.file, SMART_OPTS_BY_SLOT[slot]);
+    }
+    result.innerHTML = `<div style="color:var(--success);font-size:13px;font-weight:500">✓ ${Object.keys(finalAssignments).length} files loaded — see slots below or click Run.</div>`;
+  });
+  document.getElementById("smart-reset").addEventListener("click", () => {
+    document.getElementById("smart-files").value = "";
+    result.classList.add("hidden");
+    result.innerHTML = "";
+  });
+});
+
+document.getElementById("f-loans").addEventListener("change", e => {
+  if (!e.target.files[0]) return;
+  onFile("loans", e.target.files[0], {
+    rowId: "row-loans", fnId: "fn-loans", mapId: "map-loans", mgId: "mg-loans",
+    detect: autoDetectLoans,
+    fields: [
+      ["loanId", "Loan ID"],
+      ["grossAmount", "Gross Amount Disbursed"],
+      ["disbDate", "Disbursement Date"],
+      ["emiStartDate", "EMI Start Date"],
+      ["installment", "Installment Amount"],
+      ["rate", "Rate of Interest"],
+      ["bpi", "BPI Days"],
+      ["closureDate", "Loan Closure Date"]
+    ]
+  });
+});
+document.getElementById("f-pay").addEventListener("change", e => {
+  if (!e.target.files[0]) return;
+  onFile("pay", e.target.files[0], {
+    rowId: "row-pay", fnId: "fn-pay", mapId: "map-pay", mgId: "mg-pay",
+    detect: autoDetectPayments,
+    fields: [
+      ["payDate", "Payment Date"],
+      ["loanId", "Loan ID"],
+      ["principal", "Principal Received"],
+      ["interest", "Interest Received"],
+      ["delayedInt", "Delayed Interest"],
+      ["penalty", "Penalty Received"]
+    ]
+  });
+});
+document.getElementById("f-fc").addEventListener("change", e => {
+  if (!e.target.files[0]) return;
+  onFile("fc", e.target.files[0], {
+    rowId: "row-fc", fnId: "fn-fc", mapId: "map-fc", mgId: "mg-fc",
+    detect: autoDetectTwoCol,
+    fields: [["dateCol", "Date"], ["amtCol", "Amount"]]
+  });
+});
+document.getElementById("f-pf").addEventListener("change", e => {
+  if (!e.target.files[0]) return;
+  onFile("pf", e.target.files[0], {
+    rowId: "row-pf", fnId: "fn-pf", mapId: "map-pf", mgId: "mg-pf",
+    detect: autoDetectTwoCol,
+    fields: [["dateCol", "Date"], ["amtCol", "Amount"]]
+  });
+});
+
+function refreshRunButton() {
+  const btn = document.getElementById("btn-run");
+  const status = document.getElementById("run-status");
+  const lm = STATE.loans.mapping, pm = STATE.pay.mapping;
+  let ok = STATE.loans.rows.length > 0 && STATE.pay.rows.length > 0
+    && lm && lm.loanId && lm.grossAmount && lm.disbDate && lm.emiStartDate && lm.installment && lm.rate
+    && pm && pm.payDate && pm.loanId && pm.principal && pm.interest;
+  btn.disabled = !ok;
+  status.textContent = ok ? "Ready to run." : "Upload Loan Details and Payments file to begin.";
+  status.className = ok ? "status ok" : "status";
+}
+
+/* ---------- error display ---------- */
+function showError(msg) {
+  const el = document.getElementById("errArea");
+  const div = document.createElement("div");
+  div.className = "err-banner";
+  div.textContent = msg;
+  el.appendChild(div);
+  setTimeout(() => div.remove(), 8000);
+}
+function clearErrors() { document.getElementById("errArea").innerHTML = ""; }
+
+/* ---------- tab switching ---------- */
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (btn.disabled) return;
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const target = btn.dataset.tab;
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
+    document.getElementById("tab-" + target).classList.remove("hidden");
+  });
+});
+function enableTabs() {
+  document.querySelectorAll(".tab").forEach(b => b.disabled = false);
+}
+
+/* ============================================================
+   CALCULATION ENGINE
+   ============================================================ */
+function buildContractedSchedule(loan) {
+  /* Returns Map<dateKey, principalReduction>. Iterate weekly from EMI start. */
+  const schedule = new Map();
+  let pos = round2(loan.grossAmount);
+  let date = new Date(loan.emiStartDate);
+  let safety = 0;
+  while (pos > 0.01 && safety < 500) {
+    const weeklyInterest = round2(pos * (loan.rate / 52));
+    let principalReduction = round2(loan.installment - weeklyInterest);
+    if (principalReduction <= 0) break; // pathological loan
+    if (principalReduction > pos) principalReduction = pos;
+    schedule.set(dateKey(date), round2(principalReduction));
+    pos = round2(pos - principalReduction);
+    date = addDays(date, 7);
+    safety++;
+  }
+  return schedule;
+}
+
+function buildPaymentsIndex(payments, mp) {
+  /* Returns Map<loanId, Map<dateKey, {principal,interest,delayedInterest,penalty}>>
+     Also returns global Map<monthKey, {interest, delayedInterest, penalty, principal, count}> */
+  const byLoanDate = new Map();
+  const byMonth = new Map();
+  for (const r of payments) {
+    const d = parseDate(r[mp.payDate]);
+    if (!d) continue;
+    const lid = parseInt(toNum(r[mp.loanId]));
+    if (!lid) continue;
+    const k = dateKey(d);
+    const mk = monthKey(d);
+    const principal = toNum(r[mp.principal]);
+    const interest = toNum(r[mp.interest]);
+    const delayed = mp.delayedInt ? toNum(r[mp.delayedInt]) : 0;
+    const penalty = mp.penalty ? toNum(r[mp.penalty]) : 0;
+
+    if (!byLoanDate.has(lid)) byLoanDate.set(lid, new Map());
+    const m = byLoanDate.get(lid);
+    const cur = m.get(k) || { principal: 0, interest: 0, delayedInterest: 0, penalty: 0 };
+    cur.principal += principal;
+    cur.interest += interest;
+    cur.delayedInterest += delayed;
+    cur.penalty += penalty;
+    m.set(k, cur);
+
+    const mm = byMonth.get(mk) || { interest: 0, delayedInterest: 0, penalty: 0, principal: 0, count: 0 };
+    mm.interest += interest;
+    mm.delayedInterest += delayed;
+    mm.penalty += penalty;
+    mm.principal += principal;
+    mm.count++;
+    byMonth.set(mk, mm);
+  }
+  return { byLoanDate, byMonth };
+}
+
+function aggregateTwoCol(rows, mapping) {
+  /* For foreclosure or processing fee files: group amounts by month */
+  if (!rows || !rows.length || !mapping || !mapping.dateCol || !mapping.amtCol) return new Map();
+  const byMonth = new Map();
+  for (const r of rows) {
+    const d = parseDate(r[mapping.dateCol]);
+    if (!d) continue;
+    const mk = monthKey(d);
+    byMonth.set(mk, (byMonth.get(mk) || 0) + toNum(r[mapping.amtCol]));
+  }
+  return byMonth;
+}
+
+function simulateLoan(loan, paymentsForLoan, lastSimDate) {
+  /* Returns array of daily rows. Stops at min(lastSimDate, loan.closureDate, when actual POS hits 0). */
+  const schedule = buildContractedSchedule(loan);
+  const rows = [];
+  let actualOpen = round2(loan.grossAmount);
+  let contractedOpen = round2(loan.grossAmount);
+  let d = new Date(loan.disbDate);
+  let safety = 0;
+  // Effective horizon: closure date caps simulation if loan is closed
+  const horizon = loan.closureDate
+    ? new Date(Math.min(lastSimDate.getTime(), loan.closureDate.getTime()))
+    : lastSimDate;
+  while (d.getTime() <= horizon.getTime() && safety < 1500) {
+    const k = dateKey(d);
+    const pay = (paymentsForLoan && paymentsForLoan.get(k)) || { principal: 0, interest: 0, delayedInterest: 0, penalty: 0 };
+    const actualClose = round2(Math.max(0, actualOpen - pay.principal));
+    const contractedReduction = schedule.get(k) || 0;
+    const contractedClose = round2(Math.max(0, contractedOpen - contractedReduction));
+    const dailyHurdle = round2(actualClose * HURDLE_RATE / 365);
+    const dailyContractedInterest = round2(contractedClose * loan.rate / 365);
+    const dailyUnrealised = round2(dailyContractedInterest - dailyHurdle);
+    rows.push({
+      loanId: loan.loanId,
+      date: new Date(d), dateKey: k, monthKey: monthKey(d),
+      actualPOSOpen: actualOpen,
+      actualPOSClose: actualClose,
+      contractedPOSOpen: contractedOpen,
+      contractedPOSClose: contractedClose,
+      principal: round2(pay.principal),
+      interest: round2(pay.interest),
+      delayedInterest: round2(pay.delayedInterest),
+      penalty: round2(pay.penalty),
+      contractedReduction: round2(contractedReduction),
+      dailyHurdle, dailyContractedInterest, dailyUnrealised,
+      isEMI: contractedReduction > 0
+    });
+    if (actualClose <= 0.01) break; // loan closed
+    actualOpen = actualClose;
+    contractedOpen = contractedClose;
+    d = addDays(d, 1);
+    safety++;
+  }
+  return rows;
+}
+
+function parseDateKey(k) {
+  const [y, m, d] = k.split("-").map(Number);
+  return makeUTC(y, m - 1, d);
+}
+
+function buildLoanIndex(loans, byLoanDate, perLoanDailyRows, snapshotDate) {
+  /* For each loan, builds full schedule, payment series, settlements, and DPD.
+     Returns Map<loanId, {loan, schedule, payments, lastEmiDate, dpd, ...}> */
+  const index = new Map();
+  for (const loan of loans) {
+    // Walk the contracted schedule producing both principal and interest portions
+    const scheduleArr = [];
+    let pos = round2(loan.grossAmount);
+    let date = new Date(loan.emiStartDate);
+    let safety = 0;
+    while (pos > 0.01 && safety < 500) {
+      const wkInt = round2(pos * loan.rate / 52);
+      let principalRedx = round2(loan.installment - wkInt);
+      if (principalRedx <= 0) break;
+      if (principalRedx > pos) principalRedx = pos;
+      const totalEmi = round2(principalRedx + wkInt);
+      scheduleArr.push({
+        date: new Date(date), dateKey: dateKey(date),
+        principalDue: principalRedx, interestDue: wkInt, totalDue: totalEmi
+      });
+      pos = round2(pos - principalRedx);
+      date = addDays(date, 7);
+      safety++;
+    }
+
+    const lastEmiDate = scheduleArr.length ? scheduleArr[scheduleArr.length - 1].date : null;
+
+    // Cumulative due
+    let cumDue = 0;
+    for (const e of scheduleArr) { cumDue = round2(cumDue + e.totalDue); e.cumulativeDue = cumDue; }
+
+    // Build sorted payment array (only EMI components: principal + interest)
+    const paymentsMap = byLoanDate.get(loan.loanId) || new Map();
+    const paymentsArr = [];
+    for (const [k, p] of paymentsMap) {
+      const total = round2(p.principal + p.interest);
+      if (total > 0) paymentsArr.push({
+        dateKey: k, date: parseDateKey(k),
+        principal: round2(p.principal), interest: round2(p.interest), total
+      });
+    }
+    paymentsArr.sort((a, b) => a.date - b.date);
+
+    // Cumulative paid
+    let cumPaid = 0;
+    for (const p of paymentsArr) { cumPaid = round2(cumPaid + p.total); p.cumulativePaid = cumPaid; }
+
+    // Settlement date for each contracted EMI (FIFO cumulative)
+    for (const e of scheduleArr) {
+      let settledOn = null;
+      for (const p of paymentsArr) {
+        if (p.cumulativePaid + 0.01 >= e.cumulativeDue) { settledOn = p.date; break; }
+      }
+      e.settledOn = settledOn;
+      e.daysLate = settledOn ? daysBetween(e.date, settledOn) : null;
+      if (settledOn === null) {
+        e.status = e.date.getTime() > snapshotDate.getTime() ? "pending" : "unsettled";
+      } else if (e.daysLate >= -3 && e.daysLate <= 3) {
+        e.status = "ontime";
+      } else if (e.daysLate < -3) {
+        e.status = "early";
+      } else {
+        e.status = "late";
+      }
+    }
+
+    // Closed loan detection: closure date present means the loan is closed
+    const isClosed = loan.closureDate !== null && loan.closureDate !== undefined;
+
+    // Current DPD: oldest unsettled EMI with due date <= snapshot
+    // Closed loans always have DPD = 0 (loan is no longer active)
+    let dpd = 0, oldestUnpaid = null;
+    if (!isClosed) {
+      for (const e of scheduleArr) {
+        if (e.date.getTime() > snapshotDate.getTime()) break;
+        if (e.settledOn === null) { oldestUnpaid = e; break; }
+      }
+      if (oldestUnpaid) dpd = Math.max(0, daysBetween(oldestUnpaid.date, snapshotDate));
+    }
+
+    // Outstanding POS at snapshot (last simulated row's actual close)
+    const dailyRows = perLoanDailyRows.get(loan.loanId) || [];
+    const lastRow = dailyRows[dailyRows.length - 1];
+    const outstandingPOS = lastRow ? round2(lastRow.actualPOSClose) : round2(loan.grossAmount);
+
+    // Last payment date
+    const lastPayment = paymentsArr.length ? paymentsArr[paymentsArr.length - 1].date : null;
+
+    // Total overdue: closed loans have zero overdue by definition
+    let overdueAmount = 0;
+    if (!isClosed) {
+      let cumDueSnap = 0, cumPaidSnap = 0;
+      for (const e of scheduleArr) if (e.date.getTime() <= snapshotDate.getTime()) cumDueSnap = e.cumulativeDue;
+      for (const p of paymentsArr) if (p.date.getTime() <= snapshotDate.getTime()) cumPaidSnap = p.cumulativePaid;
+      overdueAmount = round2(Math.max(0, cumDueSnap - cumPaidSnap));
+    }
+
+    // Next EMI: closed loans have no future EMIs
+    let nextEmi = null;
+    if (!isClosed) {
+      for (const e of scheduleArr) if (e.date.getTime() > snapshotDate.getTime()) { nextEmi = e.date; break; }
+    }
+
+    // EMI counts
+    const emisDue = scheduleArr.filter(e => e.date.getTime() <= snapshotDate.getTime()).length;
+    const emisOnTime = scheduleArr.filter(e => e.status === "ontime" || e.status === "early").length;
+    const emisLate = scheduleArr.filter(e => e.status === "late").length;
+    const emisUnsettled = scheduleArr.filter(e => e.status === "unsettled").length;
+
+    index.set(loan.loanId, {
+      loan, schedule: scheduleArr, payments: paymentsArr, dailyRows,
+      lastEmiDate, dpd, outstandingPOS, lastPayment, overdueAmount, nextEmi,
+      oldestUnpaid, emisDue, emisOnTime, emisLate, emisUnsettled,
+      isClosed, closureDate: loan.closureDate || null
+    });
+  }
+  return index;
+}
+
+function computeCarryForward(perLoanDailyRows, loanIndex) {
+  /* New formula: Carry Forward = Contracted Interest Accrued − Interest Collected
+     This is a receivable: interest earned but not yet received in cash.
+
+     For each loan, for each month, for each day in the simulated daily rows:
+       - Add daily contracted interest to that month's "accrued" bucket
+       - Subtract any interest collected on that day
+     Days past the loan's last contracted EMI date are excluded (loan matured).
+     Days past closure date never appear in rows (simulation already stops there).
+
+     Also stores per-loan, per-month, per-day detail on the loan info object for the
+     Loan Lookup breakdown table.
+
+     Returns Map<monthKey, totalCarryForward>. */
+  const result = new Map();
+  for (const [loanId, rows] of perLoanDailyRows) {
+    const info = loanIndex.get(loanId);
+    if (!info || !info.lastEmiDate) continue;
+    const lastEmiTime = info.lastEmiDate.getTime();
+
+    // Per-loan breakdown structure: Map<monthKey, { days: [...], total }>
+    const loanBreakdown = new Map();
+
+    for (const r of rows) {
+      if (r.date.getTime() > lastEmiTime) continue;              // loan matured
+
+      const accrued = r.dailyContractedInterest;                 // daily interest earned
+      const collected = r.interest;                              // daily interest received (file-trusted)
+      const dayCarry = round2(accrued - collected);
+
+      result.set(r.monthKey, (result.get(r.monthKey) || 0) + dayCarry);
+
+      // Stash for breakdown table — track every day within tenure
+      if (!loanBreakdown.has(r.monthKey)) loanBreakdown.set(r.monthKey, { days: [], total: 0 });
+      const mb = loanBreakdown.get(r.monthKey);
+      mb.days.push({
+        dateKey: r.dateKey,
+        contractedPOS: r.contractedPOSClose,
+        accrued,
+        collected,
+        carryForward: dayCarry,
+        isEMI: r.isEMI
+      });
+      mb.total = round2(mb.total + dayCarry);
+    }
+    info.carryBreakdown = loanBreakdown;
+  }
+  for (const [k, v] of result) result.set(k, round2(v));
+  return result;
+}
+
+function runCalculation() {
+  clearErrors();
+  // Parse loans
+  const lm = STATE.loans.mapping;
+  const loans = [];
+  for (const r of STATE.loans.rows) {
+    const loanId = parseInt(toNum(r[lm.loanId]));
+    if (!loanId) continue;
+    const rate = toNum(r[lm.rate]);
+    const disbDate = parseDate(r[lm.disbDate]);
+    const emiStartDate = parseDate(r[lm.emiStartDate]);
+    if (!disbDate || !emiStartDate) {
+      showError(`Loan ${loanId} skipped: invalid dates`);
+      continue;
+    }
+    const closureDate = lm.closureDate ? parseDate(r[lm.closureDate]) : null;
+    loans.push({
+      loanId,
+      grossAmount: toNum(r[lm.grossAmount]),
+      disbDate, emiStartDate, closureDate,
+      installment: toNum(r[lm.installment]),
+      rate,
+      bpi: lm.bpi ? toNum(r[lm.bpi]) : 0
+    });
+  }
+  if (!loans.length) { showError("No valid loans found."); return; }
+
+  // Build payments index
+  const pm = STATE.pay.mapping;
+  const { byLoanDate, byMonth: payByMonth } = buildPaymentsIndex(STATE.pay.rows, pm);
+
+  // Determine simulation horizon: end of last month with payments
+  const monthsInPayments = Array.from(payByMonth.keys()).sort();
+  if (!monthsInPayments.length) { showError("Payments file has no parseable dates."); return; }
+  const lastMonth = monthsInPayments[monthsInPayments.length - 1];
+  const [ly, lmm] = lastMonth.split("-").map(Number);
+  const lastSimDate = endOfMonth(makeUTC(ly, lmm - 1, 1));
+
+  // Run per-loan simulation
+  const perLoanDailyRows = new Map();
+  for (const loan of loans) {
+    const rows = simulateLoan(loan, byLoanDate.get(loan.loanId), lastSimDate);
+    perLoanDailyRows.set(loan.loanId, rows);
+  }
+
+  // Aggregate to portfolio daily by month
+  // Map<monthKey, Map<dateKey, dailyAggregate>>
+  const dailyByMonth = new Map();
+  for (const rows of perLoanDailyRows.values()) {
+    for (const r of rows) {
+      if (!dailyByMonth.has(r.monthKey)) dailyByMonth.set(r.monthKey, new Map());
+      const dayMap = dailyByMonth.get(r.monthKey);
+      const cur = dayMap.get(r.dateKey) || {
+        date: r.date, dateKey: r.dateKey,
+        actualPOS: 0, contractedPOS: 0,
+        principal: 0, interest: 0, delayedInterest: 0,
+        dailyHurdle: 0, dailyContractedInterest: 0, dailyUnrealised: 0,
+        emiCount: 0, totalLoans: 0
+      };
+      cur.actualPOS += r.actualPOSClose;
+      cur.contractedPOS += r.contractedPOSClose;
+      cur.principal += r.principal;
+      cur.interest += r.interest;
+      cur.delayedInterest += r.delayedInterest;
+      cur.dailyHurdle += r.dailyHurdle;
+      cur.dailyContractedInterest += r.dailyContractedInterest;
+      cur.dailyUnrealised += r.dailyUnrealised;
+      if (r.isEMI) cur.emiCount++;
+      cur.totalLoans++;
+      dayMap.set(r.dateKey, cur);
+    }
+  }
+
+  // Build loan index (schedule, payments, settlements, DPD per loan) and carry forward
+  const loanIndex = buildLoanIndex(loans, byLoanDate, perLoanDailyRows, lastSimDate);
+  const tailByMonth = computeCarryForward(perLoanDailyRows, loanIndex);
+
+  // Optional file aggregations
+  const fcByMonth = aggregateTwoCol(STATE.fc.rows, STATE.fc.mapping);
+  const pfByMonth = aggregateTwoCol(STATE.pf.rows, STATE.pf.mapping);
+
+  // Build monthly summary for months that have payments
+  // Track running receivable balance (cumulative) — opening = prior month's closing
+  const summary = [];
+  let runningReceivable = 0;
+  for (const mk of monthsInPayments) {
+    const dayMap = dailyByMonth.get(mk) || new Map();
+    const sortedDays = Array.from(dayMap.values()).sort((a,b) => a.date - b.date);
+    let X = 0, totalPOS = 0, dayCount = sortedDays.length;
+    for (const d of sortedDays) { X += d.dailyHurdle; totalPOS += d.actualPOS; }
+    const payAgg = payByMonth.get(mk) || { interest:0, delayedInterest:0, penalty:0 };
+    const Y = round2(payAgg.interest + payAgg.delayedInterest);
+    const Z = round2(payAgg.penalty * PENALTY_PCT);
+    const F = round2((fcByMonth.get(mk) || 0) * FORECLOSURE_PCT);
+    const P = round2((pfByMonth.get(mk) || 0) * PROCESSING_PCT);
+    const Xr = round2(X);
+    const fee = round2(Y + Z + P + F - Xr);
+
+    // Receivable balance: cumulative interest accrued − cumulative interest collected
+    const monthDelta = tailByMonth.get(mk) || 0;
+    const receivableOpening = round2(runningReceivable);
+    runningReceivable = round2(runningReceivable + monthDelta);
+    const receivableClosing = runningReceivable;
+
+    // Days in calendar month vs days actually present (for partial-month flag)
+    const [yy, mm] = mk.split("-").map(Number);
+    const daysInMonth = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+    const isPartial = dayCount > 0 && dayCount < daysInMonth;
+
+    summary.push({
+      monthKey: mk,
+      monthLabel: monthLabel(mk),
+      avgDailyPOS: dayCount ? round2(totalPOS / dayCount) : 0,
+      interestY: round2(payAgg.interest),
+      delayedY: round2(payAgg.delayedInterest),
+      Y, Z, P, F, X: Xr,
+      penaltyGross: round2(payAgg.penalty),
+      foreclosureGross: round2(fcByMonth.get(mk) || 0),
+      processingGross: round2(pfByMonth.get(mk) || 0),
+      carryForward: monthDelta,
+      receivableOpening, receivableClosing,
+      isPartial, dayCount, daysInMonth,
+      serviceFee: fee,
+      dailyRows: sortedDays
+    });
+  }
+
+  // DPD watchlist: loans with dpd > 0, sorted by dpd desc
+  const dpdWatchlist = [];
+  for (const info of loanIndex.values()) {
+    if (info.dpd > 0) dpdWatchlist.push(info);
+  }
+  dpdWatchlist.sort((a, b) => b.dpd - a.dpd);
+
+  // Closed loans count for the banner
+  let closedCount = 0;
+  for (const info of loanIndex.values()) if (info.isClosed) closedCount++;
+
+  STATE.result = {
+    summary,
+    loanCount: loans.length,
+    closedCount,
+    monthsInPayments,
+    perLoanDailyRows,
+    loanIndex,
+    dpdWatchlist,
+    snapshotDate: lastSimDate
+  };
+
+  renderSummary();
+  renderDailyMonthSelector();
+  renderDPDWatchlist();
+  enableTabs();
+  // Switch to summary tab
+  document.querySelector('.tab[data-tab="summary"]').click();
+}
+
+document.getElementById("btn-run").addEventListener("click", () => {
+  try {
+    runCalculation();
+  } catch (err) {
+    console.error(err);
+    showError("Calculation error: " + err.message);
+  }
+});
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function renderSummary() {
+  const r = STATE.result;
+  const info = document.getElementById("summary-info");
+  const grandFee = r.summary.reduce((s, m) => s + m.serviceFee, 0);
+  const totalY = r.summary.reduce((s, m) => s + m.Y, 0);
+  const totalX = r.summary.reduce((s, m) => s + m.X, 0);
+  const closingReceivable = r.summary.length ? r.summary[r.summary.length - 1].receivableClosing : 0;
+
+  // Stats row
+  const stats = document.getElementById("summary-stats");
+  stats.innerHTML = `
+    <div class="stat-card accent">
+      <div class="label">Total Service Fee</div>
+      <div class="value">${fmtINR0(grandFee)}</div>
+      <div class="sub">across ${r.summary.length} months</div>
+    </div>
+    <div class="stat-card success">
+      <div class="label">Interest Collected (Y)</div>
+      <div class="value">${fmtINR0(totalY)}</div>
+      <div class="sub">total receipts</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Hurdle Paid (X)</div>
+      <div class="value">${fmtINR0(totalX)}</div>
+      <div class="sub">to lender @ 19.75%</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="label">Outstanding Receivable</div>
+      <div class="value">${fmtINR0(closingReceivable)}</div>
+      <div class="sub">end of ${r.summary.length ? r.summary[r.summary.length-1].monthLabel : ""}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Active Loans</div>
+      <div class="value">${(r.loanCount - r.closedCount).toLocaleString()}</div>
+      <div class="sub">${r.closedCount.toLocaleString()} closed</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Loans in DPD</div>
+      <div class="value">${r.dpdWatchlist.length.toLocaleString()}</div>
+      <div class="sub">overdue at snapshot</div>
+    </div>`;
+
+  // Trend chart
+  const ctx = document.getElementById("trend-chart");
+  if (ctx && window.Chart) {
+    if (window._trendChart) window._trendChart.destroy();
+    const labels = r.summary.map(m => m.monthLabel);
+    const fees = r.summary.map(m => m.serviceFee);
+    const receivables = r.summary.map(m => m.receivableClosing);
+    window._trendChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
+          {
+            type: "bar", label: "Service Fee", data: fees, yAxisID: "y",
+            backgroundColor: fees.map(f => f >= 0 ? "rgba(5,150,105,0.7)" : "rgba(220,38,38,0.7)"),
+            borderRadius: 4, borderSkipped: false
+          },
+          {
+            type: "line", label: "Receivable (closing)", data: receivables, yAxisID: "y1",
+            borderColor: "#d97706", backgroundColor: "rgba(217,119,6,0.1)",
+            tension: 0.3, fill: true, pointRadius: 4, pointBackgroundColor: "#d97706"
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "top", labels: { font: { size: 12 }, usePointStyle: true } },
+          tooltip: {
+            callbacks: {
+              label: c => `${c.dataset.label}: ${fmtINR0(c.parsed.y)}`
+            }
+          }
+        },
+        scales: {
+          y: {
+            position: "left", title: { display: true, text: "Service Fee (₹)" },
+            ticks: { callback: v => "₹" + (v/1000).toFixed(0) + "k" }
+          },
+          y1: {
+            position: "right", title: { display: true, text: "Receivable (₹)" },
+            grid: { drawOnChartArea: false },
+            ticks: { callback: v => "₹" + (v/1000).toFixed(0) + "k" }
+          },
+          x: { ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  info.innerHTML = `<strong>${r.loanCount.toLocaleString()}</strong> loans processed`
+    + (r.closedCount ? ` (<strong>${r.closedCount}</strong> closed, <strong>${r.loanCount - r.closedCount}</strong> active)` : "")
+    + ` · <strong>${r.summary.length}</strong> months · `
+    + `Total service fee: <strong>${fmtINR(grandFee)}</strong>`;
+
+  const grid = document.getElementById("summary-cards");
+  grid.innerHTML = "";
+  for (const m of r.summary) {
+    const card = document.createElement("div");
+    card.className = "month-card";
+    if (m.isPartial) card.classList.add("partial");
+    let rows = `<div class="kv"><span class="k">Avg daily closing POS</span><span class="v">${fmtINR0(m.avgDailyPOS)}</span></div>`;
+    rows += `<div class="kv"><span class="k">Interest collected (Y)</span><span class="v">${fmtINR(m.interestY)}</span></div>`;
+    if (m.delayedY > 0) rows += `<div class="kv"><span class="k">Delayed interest (in Y)</span><span class="v">${fmtINR(m.delayedY)}</span></div>`;
+    if (m.Z > 0) rows += `<div class="kv"><span class="k">50% Penalty (Z)</span><span class="v">${fmtINR(m.Z)}</span></div>`;
+    if (m.F > 0) rows += `<div class="kv"><span class="k">50% Foreclosure (F)</span><span class="v">${fmtINR(m.F)}</span></div>`;
+    if (m.P > 0) rows += `<div class="kv"><span class="k">75% Processing fees (P)</span><span class="v">${fmtINR(m.P)}</span></div>`;
+    rows += `<div class="kv"><span class="k">Hurdle @ 19.75% (X)</span><span class="v">−${fmtINR(m.X)}</span></div>`;
+    rows += `<div class="kv memo"><span class="k">Receivable opening</span><span class="v">${fmtINR(m.receivableOpening)}</span></div>`;
+    rows += `<div class="kv memo"><span class="k">Receivable closing</span><span class="v" style="font-weight:600">${fmtINR(m.receivableClosing)}</span></div>`;
+    const cls = m.serviceFee >= 0 ? "pos" : "neg";
+    rows += `<div class="kv fee"><span class="k">Service Fee</span><span class="v ${cls}">${fmtINR(m.serviceFee)}</span></div>`;
+    const partialBadge = m.isPartial
+      ? `<span class="partial-badge">${m.dayCount}/${m.daysInMonth} days</span>`
+      : "";
+    card.innerHTML = `<h3>${m.monthLabel}${partialBadge}</h3>${rows}`;
+    grid.appendChild(card);
+  }
+}
+
+function renderDailyMonthSelector() {
+  const sel = document.getElementById("day-month");
+  sel.innerHTML = "";
+  for (const m of STATE.result.summary) {
+    const opt = document.createElement("option");
+    opt.value = m.monthKey;
+    opt.textContent = m.monthLabel;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener("change", renderDailyTable);
+  if (STATE.result.summary.length) renderDailyTable();
+}
+
+function renderDailyTable() {
+  const sel = document.getElementById("day-month");
+  const mk = sel.value;
+  const month = STATE.result.summary.find(m => m.monthKey === mk);
+  const tbl = document.getElementById("daily-table");
+  if (!month) { tbl.innerHTML = ""; return; }
+
+  // Find last EMI date in month for tail-day flagging at portfolio level (ANY loan EMI present)
+  // Per PRD, tail days are per loan. For visual tagging at portfolio level, classify a day as
+  // EMI if any loan had an EMI on it; tail if it's after the last portfolio-wide EMI date in the month.
+  const days = month.dailyRows;
+  let lastPortfolioEMI = null;
+  for (const d of days) if (d.emiCount > 0) lastPortfolioEMI = d.date;
+
+  let html = `<thead><tr>
+    <th>Date</th>
+    <th>Closing POS</th>
+    <th>Contracted POS</th>
+    <th>Principal Recd</th>
+    <th>Interest</th>
+    <th>Delayed Int</th>
+    <th>Contracted Int</th>
+    <th>Hurdle (X)</th>
+    <th>Unrealised</th>
+    <th>Type</th>
+  </tr></thead><tbody>`;
+
+  let tot = { actualPOS: 0, contractedPOS: 0, principal: 0, interest: 0, delayedInterest: 0,
+              dailyContractedInterest: 0, dailyHurdle: 0, dailyUnrealised: 0 };
+
+  for (const d of days) {
+    let typeCls = "none", typeLbl = "—";
+    if (d.emiCount > 0) { typeCls = "emi"; typeLbl = `EMI (${d.emiCount})`; }
+    else if (lastPortfolioEMI && d.date.getTime() > lastPortfolioEMI.getTime()) { typeCls = "tail"; typeLbl = "Tail"; }
+    const dStr = d.dateKey.split("-").reverse().join("/");
+    html += `<tr class="${typeCls === "emi" ? "emi" : (typeCls === "tail" ? "tail" : "")}">
+      <td>${dStr}</td>
+      <td>${fmtINR0(d.actualPOS)}</td>
+      <td>${fmtINR0(d.contractedPOS)}</td>
+      <td>${d.principal > 0 ? fmtINR(d.principal) : "—"}</td>
+      <td>${d.interest > 0 ? fmtINR(d.interest) : "—"}</td>
+      <td>${d.delayedInterest > 0 ? fmtINR(d.delayedInterest) : "—"}</td>
+      <td>${fmtINR(d.dailyContractedInterest)}</td>
+      <td>${fmtINR(d.dailyHurdle)}</td>
+      <td>${fmtINR(d.dailyUnrealised)}</td>
+      <td><span class="pill ${typeCls}">${typeLbl}</span></td>
+    </tr>`;
+    tot.actualPOS += d.actualPOS;
+    tot.contractedPOS += d.contractedPOS;
+    tot.principal += d.principal;
+    tot.interest += d.interest;
+    tot.delayedInterest += d.delayedInterest;
+    tot.dailyContractedInterest += d.dailyContractedInterest;
+    tot.dailyHurdle += d.dailyHurdle;
+    tot.dailyUnrealised += d.dailyUnrealised;
+  }
+  // Totals row
+  html += `<tr class="totals-row">
+    <td>TOTAL / AVG</td>
+    <td>${fmtINR0(days.length ? tot.actualPOS/days.length : 0)} avg</td>
+    <td>${fmtINR0(days.length ? tot.contractedPOS/days.length : 0)} avg</td>
+    <td>${fmtINR(tot.principal)}</td>
+    <td>${fmtINR(tot.interest)}</td>
+    <td>${fmtINR(tot.delayedInterest)}</td>
+    <td>${fmtINR(tot.dailyContractedInterest)}</td>
+    <td>${fmtINR(tot.dailyHurdle)}</td>
+    <td>${fmtINR(tot.dailyUnrealised)}</td>
+    <td>${days.length} days</td>
+  </tr>`;
+  html += `</tbody>`;
+  tbl.innerHTML = html;
+
+  document.getElementById("day-status").textContent = `${days.length} days`;
+}
+
+/* ============================================================
+   LOAN LOOKUP
+   ============================================================ */
+function dpdBucket(d) {
+  if (d <= 0) return { cls: "ontime", label: "Current" };
+  if (d <= 30) return { cls: "dpd-low", label: "1-30" };
+  if (d <= 60) return { cls: "dpd-mid", label: "31-60" };
+  if (d <= 90) return { cls: "dpd-high", label: "61-90" };
+  return { cls: "dpd-crit", label: "90+" };
+}
+
+function fmtDateK(k) { return k ? k.split("-").reverse().join("/") : "—"; }
+function fmtDateD(d) { return d ? dateKey(d).split("-").reverse().join("/") : "—"; }
+
+function renderLoanLookup(rawId) {
+  const out = document.getElementById("lookup-result");
+  const status = document.getElementById("lookup-status");
+  const loanId = parseInt(rawId);
+  if (!loanId) { status.textContent = "Enter a numeric Loan ID."; status.className = "status err"; out.innerHTML = ""; return; }
+  const info = STATE.result.loanIndex.get(loanId);
+  if (!info) { status.textContent = `Loan ID ${loanId} not found.`; status.className = "status err"; out.innerHTML = ""; return; }
+  status.textContent = ""; status.className = "status";
+
+  const L = info.loan;
+  const bucket = dpdBucket(info.dpd);
+  const totalEmis = info.schedule.length;
+  const settledEmis = info.schedule.filter(e => e.settledOn).length;
+  const isClosed = info.isClosed;
+
+  let html = `<div class="panel"><h2>Loan ${L.loanId}`;
+  if (isClosed) {
+    html += ` <span class="pill ontime" style="font-size:12px;vertical-align:middle;margin-left:8px">Closed on ${fmtDateD(info.closureDate)}</span>`;
+  } else {
+    html += ` <span class="pill ${bucket.cls}" style="font-size:12px;vertical-align:middle;margin-left:8px">${info.dpd === 0 ? "Current" : info.dpd + " DPD"}</span>`;
+  }
+  html += `</h2>`;
+  html += `<div class="loan-header">
+    <div class="kv"><span class="k">Disbursed</span><span class="v">${fmtINR0(L.grossAmount)}</span></div>
+    <div class="kv"><span class="k">ROI</span><span class="v">${(L.rate * 100).toFixed(2)}%</span></div>
+    <div class="kv"><span class="k">EMI</span><span class="v">${fmtINR0(L.installment)}</span></div>
+    <div class="kv"><span class="k">Disb. Date</span><span class="v">${fmtDateD(L.disbDate)}</span></div>
+    <div class="kv"><span class="k">EMI Start</span><span class="v">${fmtDateD(L.emiStartDate)}</span></div>
+    <div class="kv"><span class="k">Last Contracted EMI</span><span class="v">${fmtDateD(info.lastEmiDate)}</span></div>
+    <div class="kv"><span class="k">Total EMIs</span><span class="v">${totalEmis} <span style="color:var(--muted);font-weight:400">(${settledEmis} settled)</span></span></div>
+    <div class="kv"><span class="k">Outstanding POS</span><span class="v">${fmtINR0(info.outstandingPOS)}</span></div>
+    <div class="kv"><span class="k">Last Payment</span><span class="v">${fmtDateD(info.lastPayment)}</span></div>
+    <div class="kv"><span class="k">DPD</span><span class="v"><span class="pill ${bucket.cls}">${info.dpd === 0 ? (isClosed ? "Closed" : "Current") : info.dpd + " days"}</span></span></div>
+    <div class="kv"><span class="k">Overdue</span><span class="v">${info.overdueAmount > 0 ? fmtINR(info.overdueAmount) : "—"}</span></div>
+    <div class="kv"><span class="k">${isClosed ? "Closure Date" : "Next EMI"}</span><span class="v">${fmtDateD(isClosed ? info.closureDate : info.nextEmi)}</span></div>
+  </div></div>`;
+
+  // Schedule table — different layout for closed vs active loans
+  if (isClosed) {
+    // Closed loan: show chronological list of actual payments
+    html += `<div class="panel"><h2>Payments Received (loan closed)</h2>
+      <div class="scroll-y"><div class="scroll-x"><table class="schedule-table"><thead><tr>
+        <th>#</th><th>Payment Date</th><th>Principal</th><th>Interest</th><th>Total Received</th><th>Status</th>
+      </tr></thead><tbody>`;
+    let i = 1;
+    let totP = 0, totI = 0, totT = 0;
+    for (const p of info.payments) {
+      totP += p.principal; totI += p.interest; totT += p.total;
+      html += `<tr>
+        <td>${i++}</td>
+        <td>${fmtDateD(p.date)}</td>
+        <td>${fmtINR(p.principal)}</td>
+        <td>${fmtINR(p.interest)}</td>
+        <td>${fmtINR(p.total)}</td>
+        <td><span class="pill ontime">Closed</span></td>
+      </tr>`;
+    }
+    html += `<tr class="totals-row">
+      <td colspan="2">TOTAL (${info.payments.length} payments)</td>
+      <td>${fmtINR(round2(totP))}</td>
+      <td>${fmtINR(round2(totI))}</td>
+      <td>${fmtINR(round2(totT))}</td>
+      <td>—</td>
+    </tr>`;
+    html += `</tbody></table></div></div></div>`;
+  } else {
+    // Active loan: show contracted schedule with FIFO settlement
+    html += `<div class="panel"><h2>Repayment Schedule (FIFO settlement)</h2>
+      <div class="scroll-y"><div class="scroll-x"><table class="schedule-table"><thead><tr>
+        <th>#</th><th>Due Date</th><th>Principal</th><th>Interest</th><th>EMI Total</th>
+        <th>Cum. Due</th><th>Cum. Paid</th><th>Settled On</th><th>Days Late</th><th>Status</th>
+      </tr></thead><tbody>`;
+    let i = 1;
+    for (const e of info.schedule) {
+      const lateStr = e.daysLate === null ? "—" : (e.daysLate > 0 ? "+" : "") + e.daysLate;
+      // Cumulative paid as of the EMI's settlement date (= cumulativeDue if settled, else last cum paid before due date)
+      let cumPaidAtRow;
+      if (e.settledOn) {
+        // Find the payment that closed this EMI and use its cumulativePaid
+        let foundCum = e.cumulativeDue;
+        for (const p of info.payments) {
+          if (p.cumulativePaid + 0.01 >= e.cumulativeDue) { foundCum = p.cumulativePaid; break; }
+        }
+        cumPaidAtRow = foundCum;
+      } else {
+        // Not settled — show cumulative paid as of EMI due date
+        let cumAtDue = 0;
+        for (const p of info.payments) {
+          if (p.date.getTime() <= e.date.getTime()) cumAtDue = p.cumulativePaid;
+        }
+        cumPaidAtRow = cumAtDue;
+      }
+      html += `<tr>
+        <td>${i++}</td>
+        <td>${fmtDateD(e.date)}</td>
+        <td>${fmtINR(e.principalDue)}</td>
+        <td>${fmtINR(e.interestDue)}</td>
+        <td>${fmtINR(e.totalDue)}</td>
+        <td>${fmtINR(e.cumulativeDue)}</td>
+        <td>${fmtINR(cumPaidAtRow)}</td>
+        <td>${fmtDateD(e.settledOn)}</td>
+        <td>${lateStr}</td>
+        <td><span class="pill ${e.status}">${e.status}</span></td>
+      </tr>`;
+    }
+    html += `</tbody></table></div></div></div>`;
+  }
+
+  // Calendar
+  html += `<div class="panel"><h2>Payment Calendar (±3 days = on-time)</h2>
+    <div class="cal-legend">
+      <span class="pill ontime">on-time</span>
+      <span class="pill early">early (>3d)</span>
+      <span class="pill late">late (>3d)</span>
+      <span class="pill unsettled">unsettled</span>
+      <span class="pill pending">pending</span>
+    </div>
+    <div style="height:10px"></div>
+    <div class="calendar-grid">`;
+
+  // Group EMIs by month
+  const byMonth = new Map();
+  for (const e of info.schedule) {
+    if (!byMonth.has(e.dateKey.slice(0, 7))) byMonth.set(e.dateKey.slice(0, 7), []);
+    byMonth.get(e.dateKey.slice(0, 7)).push(e);
+  }
+  const sortedMonths = [...byMonth.keys()].sort();
+  for (const mk of sortedMonths) {
+    const emis = byMonth.get(mk);
+    const [y, m] = mk.split("-").map(Number);
+    const firstDay = makeUTC(y, m - 1, 1);
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const startDow = firstDay.getUTCDay(); // 0=Sun
+
+    // Map EMI day -> status
+    const emiDay = new Map();
+    for (const e of emis) emiDay.set(e.date.getUTCDate(), e.status);
+
+    html += `<div class="cal-month"><h4>${monthLabel(mk)}</h4><div class="cal-days">`;
+    for (const dn of ["S","M","T","W","T","F","S"]) html += `<div class="cal-dow">${dn}</div>`;
+    for (let i = 0; i < startDow; i++) html += `<div class="cal-day empty"></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const st = emiDay.get(d);
+      html += `<div class="cal-day ${st || ""}">${d}</div>`;
+    }
+    html += `</div></div>`;
+  }
+  html += `</div></div>`;
+
+  // Carry Forward Breakdown — month-wise table with daily detail (collapsible per month)
+  if (info.carryBreakdown && info.carryBreakdown.size) {
+    const months = [...info.carryBreakdown.keys()].sort();
+    let grandTotal = 0;
+    for (const mk of months) grandTotal += info.carryBreakdown.get(mk).total;
+
+    html += `<div class="panel"><h2>Carry Forward Breakdown <span style="color:var(--muted);font-weight:400;font-size:13px">· receivable interest = accrued − collected</span></h2>`;
+    html += `<div class="kv" style="margin-bottom:10px"><span class="k">Total carry forward (this loan)</span><span class="v" style="font-weight:600">${fmtINR(round2(grandTotal))}</span></div>`;
+
+    for (const mk of months) {
+      const mb = info.carryBreakdown.get(mk);
+      const totalAccrued = mb.days.reduce((s, d) => s + d.accrued, 0);
+      const totalCollected = mb.days.reduce((s, d) => s + d.collected, 0);
+      const totalCFcls = mb.total >= 0 ? "" : "color:var(--success)";
+      html += `<details class="cf-month" style="margin-bottom:8px;border:1px solid var(--border);border-radius:6px">
+        <summary style="cursor:pointer;padding:8px 12px;font-weight:500;display:flex;justify-content:space-between;align-items:center;background:var(--row-alt);user-select:none">
+          <span>${monthLabel(mk)} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${mb.days.length} days · accrued ${fmtINR(round2(totalAccrued))} − collected ${fmtINR(round2(totalCollected))}</span></span>
+          <span style="font-variant-numeric:tabular-nums;font-weight:600;${totalCFcls}">${fmtINR(round2(mb.total))}</span>
+        </summary>
+        <div class="scroll-x" style="border-top:1px solid var(--border)"><table class="schedule-table"><thead><tr>
+          <th>Date</th><th>Contracted POS</th><th>Daily Accrued</th><th>Interest Collected</th><th>Carry Forward</th><th>Note</th>
+        </tr></thead><tbody>`;
+      for (const d of mb.days) {
+        const noteCls = d.collected > 0 ? "ontime" : (d.isEMI ? "unsettled" : "pending");
+        const noteLbl = d.collected > 0 ? "interest paid" : (d.isEMI ? "EMI due, no payment" : "accrual day");
+        html += `<tr>
+          <td>${fmtDateK(d.dateKey)}</td>
+          <td>${fmtINR0(d.contractedPOS)}</td>
+          <td>${fmtINR(d.accrued)}</td>
+          <td>${d.collected > 0 ? fmtINR(d.collected) : "—"}</td>
+          <td style="font-weight:500">${fmtINR(d.carryForward)}</td>
+          <td><span class="pill ${noteCls}">${noteLbl}</span></td>
+        </tr>`;
+      }
+      html += `<tr class="totals-row">
+        <td>TOTAL ${monthLabel(mk)}</td>
+        <td>—</td>
+        <td>${fmtINR(round2(totalAccrued))}</td>
+        <td>${fmtINR(round2(totalCollected))}</td>
+        <td>${fmtINR(round2(mb.total))}</td>
+        <td>${mb.days.length} days</td>
+      </tr>`;
+      html += `</tbody></table></div></details>`;
+    }
+    html += `</div>`;
+  }
+
+  out.innerHTML = html;
+}
+
+document.getElementById("lookup-btn").addEventListener("click", () => {
+  renderLoanLookup(document.getElementById("lookup-input").value.trim());
+});
+document.getElementById("lookup-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") renderLoanLookup(e.target.value.trim());
+});
+
+/* ============================================================
+   DPD WATCHLIST
+   ============================================================ */
+function renderDPDWatchlist() {
+  const r = STATE.result;
+  const info = document.getElementById("dpd-info");
+
+  // Compute per-bucket aggregates (count, outstanding POS, overdue amount)
+  const bucketDef = [
+    { key: "1-30",  cls: "dpd-low",  range: [1, 30] },
+    { key: "31-60", cls: "dpd-mid",  range: [31, 60] },
+    { key: "61-90", cls: "dpd-high", range: [61, 90] },
+    { key: "90+",   cls: "dpd-crit", range: [91, Infinity] }
+  ];
+  const buckets = {};
+  for (const b of bucketDef) buckets[b.key] = { count: 0, pos: 0, overdue: 0, totalDpd: 0 };
+  for (const it of r.dpdWatchlist) {
+    const lbl = dpdBucket(it.dpd).label;
+    if (buckets[lbl]) {
+      buckets[lbl].count++;
+      buckets[lbl].pos += it.outstandingPOS;
+      buckets[lbl].overdue += it.overdueAmount;
+      buckets[lbl].totalDpd += it.dpd;
+    }
+  }
+  const totalOverdue = r.dpdWatchlist.reduce((s, x) => s + x.overdueAmount, 0);
+  const totalPOSDpd = r.dpdWatchlist.reduce((s, x) => s + x.outstandingPOS, 0);
+  const activeLoans = r.loanCount - r.closedCount;
+  const portfolioPct = activeLoans > 0 ? round2((r.dpdWatchlist.length / activeLoans) * 100) : 0;
+
+  info.innerHTML = `<strong>${r.dpdWatchlist.length}</strong> of ${activeLoans.toLocaleString()} active loans in DPD `
+    + `(${portfolioPct.toFixed(1)}%) as of <strong>${fmtDateD(r.snapshotDate)}</strong> · `
+    + `Total overdue: <strong>${fmtINR(totalOverdue)}</strong> · `
+    + `Outstanding POS in DPD: <strong>${fmtINR0(totalPOSDpd)}</strong>`;
+
+  // Bucket KPI cards
+  const cards = document.getElementById("dpd-bucket-cards");
+  cards.innerHTML = bucketDef.map(b => {
+    const d = buckets[b.key];
+    const avgDpd = d.count > 0 ? Math.round(d.totalDpd / d.count) : 0;
+    return `<div class="stat-card">
+      <div class="label"><span class="pill ${b.cls}" style="font-size:10px">${b.key} DPD</span></div>
+      <div class="value">${d.count}</div>
+      <div class="sub">avg ${avgDpd}d · POS ${fmtINR0(d.pos)} · overdue ${fmtINR0(d.overdue)}</div>
+    </div>`;
+  }).join("");
+
+  // DPD distribution chart
+  const ctx = document.getElementById("dpd-chart");
+  if (ctx && window.Chart) {
+    if (window._dpdChart) window._dpdChart.destroy();
+    window._dpdChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: bucketDef.map(b => b.key + " DPD"),
+        datasets: [
+          {
+            label: "Loan Count",
+            data: bucketDef.map(b => buckets[b.key].count),
+            backgroundColor: ["#fde68a", "#fdba74", "#fca5a5", "#dc2626"],
+            yAxisID: "y", borderRadius: 6
+          },
+          {
+            label: "Overdue Amount",
+            data: bucketDef.map(b => buckets[b.key].overdue),
+            type: "line", yAxisID: "y1",
+            borderColor: "#4f46e5", backgroundColor: "rgba(79,70,229,0.1)",
+            tension: 0.3, fill: true, pointRadius: 5, pointBackgroundColor: "#4f46e5"
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "top", labels: { usePointStyle: true, font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: c => c.dataset.label + ": " + (c.dataset.label === "Loan Count" ? c.parsed.y : fmtINR0(c.parsed.y))
+            }
+          }
+        },
+        scales: {
+          y: { position: "left", beginAtZero: true, title: { display: true, text: "Loans" } },
+          y1: { position: "right", beginAtZero: true, title: { display: true, text: "Overdue (₹)" },
+                grid: { drawOnChartArea: false }, ticks: { callback: v => "₹" + (v/1000).toFixed(0) + "k" } }
+        }
+      }
+    });
+  }
+
+  // Watchlist table
+  const tbl = document.getElementById("dpd-table");
+  if (!r.dpdWatchlist.length) {
+    tbl.innerHTML = `<tbody><tr><td style="text-align:center;padding:20px;color:var(--muted)">No loans in DPD.</td></tr></tbody>`;
+    return;
+  }
+  let html = `<thead><tr>
+    <th>Loan ID</th><th>DPD</th><th>Bucket</th>
+    <th>Outstanding POS</th><th>Overdue Amount</th>
+    <th>Disb. Date</th><th>Last Payment</th><th>Oldest Unpaid EMI</th><th>Action</th>
+  </tr></thead><tbody>`;
+  for (const it of r.dpdWatchlist) {
+    const b = dpdBucket(it.dpd);
+    html += `<tr>
+      <td>${it.loan.loanId}</td>
+      <td>${it.dpd}</td>
+      <td><span class="pill ${b.cls}">${b.label}</span></td>
+      <td>${fmtINR0(it.outstandingPOS)}</td>
+      <td>${fmtINR(it.overdueAmount)}</td>
+      <td>${fmtDateD(it.loan.disbDate)}</td>
+      <td>${fmtDateD(it.lastPayment)}</td>
+      <td>${fmtDateD(it.oldestUnpaid ? it.oldestUnpaid.date : null)}</td>
+      <td><button class="secondary" data-loan="${it.loan.loanId}" style="padding:3px 10px;font-size:11px">Open</button></td>
+    </tr>`;
+  }
+  html += `</tbody>`;
+  tbl.innerHTML = html;
+
+  tbl.querySelectorAll("button[data-loan]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("lookup-input").value = btn.dataset.loan;
+      renderLoanLookup(btn.dataset.loan);
+      document.querySelector('.tab[data-tab="lookup"]').click();
+    });
+  });
+}
+
+/* ============================================================
+   EXCEL EXPORT
+   ============================================================ */
+function exportExcel() {
+  if (!STATE.result) return;
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1 — Monthly Summary
+  const summaryRows = [["Month","Avg Daily POS","Interest (Y)","Delayed Interest","Penalty Gross","50% Penalty (Z)","Foreclosure Gross","50% Foreclosure (F)","Processing Gross","75% Processing (P)","Hurdle (X)","Carry Forward (memo)","Service Fee"]];
+  let totals = { Y:0, Z:0, P:0, F:0, X:0, fee:0 };
+  for (const m of STATE.result.summary) {
+    summaryRows.push([
+      m.monthLabel,
+      m.avgDailyPOS,
+      m.Y,
+      m.delayedY,
+      m.penaltyGross,
+      m.Z,
+      m.foreclosureGross,
+      m.F,
+      m.processingGross,
+      m.P,
+      m.X,
+      m.carryForward,
+      m.serviceFee
+    ]);
+    totals.Y += m.Y; totals.Z += m.Z; totals.P += m.P; totals.F += m.F; totals.X += m.X; totals.fee += m.serviceFee;
+  }
+  summaryRows.push([
+    "TOTAL", "",
+    round2(totals.Y), "", "", round2(totals.Z), "", round2(totals.F), "", round2(totals.P),
+    round2(totals.X), "", round2(totals.fee)
+  ]);
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  // basic column widths
+  wsSummary["!cols"] = [
+    {wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:18},{wch:14}
+  ];
+  XLSX.utils.book_append_sheet(wb, wsSummary, "Monthly Summary");
+
+  // Sheets 2..N — Daily Detail per month
+  for (const m of STATE.result.summary) {
+    const rows = [["Date","Closing POS","Contracted POS","Principal Recd","Interest","Delayed Interest","Contracted Interest","Hurdle (X)","Unrealised","EMI Count","Active Loans"]];
+    let lastEMI = null;
+    for (const d of m.dailyRows) if (d.emiCount > 0) lastEMI = d.date;
+    for (const d of m.dailyRows) {
+      let type = "—";
+      if (d.emiCount > 0) type = "EMI";
+      else if (lastEMI && d.date.getTime() > lastEMI.getTime()) type = "Tail";
+      rows.push([
+        d.dateKey.split("-").reverse().join("/"),
+        round2(d.actualPOS),
+        round2(d.contractedPOS),
+        round2(d.principal),
+        round2(d.interest),
+        round2(d.delayedInterest),
+        round2(d.dailyContractedInterest),
+        round2(d.dailyHurdle),
+        round2(d.dailyUnrealised),
+        d.emiCount,
+        d.totalLoans
+      ]);
+    }
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{wch:12},{wch:14},{wch:14},{wch:14},{wch:12},{wch:14},{wch:16},{wch:12},{wch:12},{wch:10},{wch:12}];
+    // Sheet name limit is 31 chars
+    const sn = ("Daily " + m.monthLabel).substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sn);
+  }
+
+  // DPD Watchlist sheet
+  if (STATE.result.dpdWatchlist && STATE.result.dpdWatchlist.length) {
+    const dpdRows = [["Loan ID","DPD","Bucket","Outstanding POS","Overdue Amount","Disb Date","EMI Start","Last EMI","Last Payment","Oldest Unpaid EMI","Total EMIs","Settled EMIs"]];
+    for (const it of STATE.result.dpdWatchlist) {
+      const b = dpdBucket(it.dpd);
+      const settled = it.schedule.filter(e => e.settledOn).length;
+      dpdRows.push([
+        it.loan.loanId,
+        it.dpd,
+        b.label,
+        round2(it.outstandingPOS),
+        round2(it.overdueAmount),
+        fmtDateD(it.loan.disbDate),
+        fmtDateD(it.loan.emiStartDate),
+        fmtDateD(it.lastEmiDate),
+        fmtDateD(it.lastPayment),
+        fmtDateD(it.oldestUnpaid ? it.oldestUnpaid.date : null),
+        it.schedule.length,
+        settled
+      ]);
+    }
+    const wsDpd = XLSX.utils.aoa_to_sheet(dpdRows);
+    wsDpd["!cols"] = [{wch:10},{wch:6},{wch:8},{wch:14},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14},{wch:10},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, wsDpd, "DPD Watchlist");
+  }
+
+  const filename = `GR_Service_Fee_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+}
+
+document.getElementById("btn-export").addEventListener("click", exportExcel);
+</script>
+</body>
+</html>
